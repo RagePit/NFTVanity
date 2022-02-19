@@ -3,28 +3,33 @@ pragma solidity ^0.8.6;
 
 import {VanityResolver} from "./VanityResolver.sol";
 
-error CallFailed(bytes returnData);
 error NotVanityOwner();
+error VanityCallError(bytes);
 
 contract VanityWallet {
 
-    VanityResolver immutable public resolver;
+    address immutable internal resolver;
+    address public owner;
 
     constructor(address _resolver) {
-        resolver = VanityResolver(_resolver);
+        resolver = _resolver;
+    }
+    
+    function setOwner(address _owner) public {
+        require(msg.sender == resolver);
+        owner = _owner;
     }
 
-    function call(address to, bytes calldata data, uint value) external payable returns(bytes memory) {
-        if (msg.sender != resolver.vanityToOwner(this)) revert NotVanityOwner();
+    fallback(bytes calldata callData) external payable returns(bytes memory){
+        (address to, bytes memory data, uint value) = abi.decode(callData, (address, bytes, uint));
+
+        if (msg.sender != owner) revert NotVanityOwner();
 
         (bool success, bytes memory returnData) = to.call{value: value}(data);
-
-        if (!success) revert CallFailed(returnData);
-
+        if (!success) revert VanityCallError(returnData);
         return returnData;
     }
-
-    fallback() external payable {}
-    receive() external payable {}
+    
+    receive() payable external {}
 
 }

@@ -20,14 +20,24 @@ contract VanityWalletTest is DSTest {
         resolver.mint(bytes32(0));
     }
 
+    function testEmptyCall() public {
+        VanityWallet vanity = resolver.idToVanity(0);
+
+        //call function from vanity
+        bytes memory callData = abi.encode(address(0xbeef), "", 0);
+        (bool success, ) = address(vanity).call(callData);
+        assertTrue(success);
+    }
+
     function testStaticCall() public {
         VanityWallet vanity = resolver.idToVanity(0);
 
         //calldata
         bytes memory data = abi.encodeWithSelector(ExampleContract.testStaticCall.selector);
-        //call function from vanity
-        bytes memory returnData = vanity.call(address(exampleContract), data, 0);
-
+        bytes memory callData = abi.encode(address(exampleContract), data, 0);
+        //call function as vanity wallet
+        (bool success, bytes memory returnData) = address(vanity).call(callData);
+        assertTrue(success);
         uint returnNum = abi.decode(returnData, (uint));
         assertEq(returnNum, exampleContract.testStaticCall());
     }
@@ -36,17 +46,31 @@ contract VanityWalletTest is DSTest {
         VanityWallet vanity = resolver.idToVanity(0);
 
         bytes memory data = abi.encodeWithSelector(ExampleContract.testStore.selector, 12002);
-        vanity.call(address(exampleContract), data, 0);
+        bytes memory callData = abi.encode(address(exampleContract), data, 0);
 
+        (bool success, ) = address(vanity).call(callData);
+        assertTrue(success);
         assertEq(12002, exampleContract.store());
     }
     
-    function testFailCallNotOwner() public {
+    function testCallNotOwner() public {
         VanityWallet vanity = resolver.idToVanity(0);
 
         hevm.prank(address(1));
 
         bytes memory data = abi.encodeWithSelector(ExampleContract.testStore.selector, 12002);
-        vanity.call(address(exampleContract), data, 0);
-    }    
+        bytes memory callData = abi.encode(address(exampleContract), data, 0);
+
+        (bool success, ) = address(vanity).call(callData);
+        assertTrue(!success);
+    }
+
+    function testSendEther() public {
+        VanityWallet vanity = resolver.idToVanity(0);
+
+        (bool success, ) = address(vanity).call{value: 1 ether}("");
+        assertTrue(success);
+
+        assertEq(address(vanity).balance, 1 ether);
+    }
 }

@@ -6,7 +6,7 @@ remappings = ['ds-test/=lib/ds-test/src/']
 force = true
 solc_version = '0.8.12'
 optimizer = true
-optimizer_runs = 10000
+optimizer_runs = 100000
 verbosity = 3
 gas_reports = ["*"]
 

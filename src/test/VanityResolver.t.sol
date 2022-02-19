@@ -19,10 +19,6 @@ contract VanityResolverTest is DSTest {
         exampleContract = new ExampleContract();
     }
 
-    function testGetCreationCode() public {
-        resolver.getVanityCreationCode();
-    }
-
     function testMint() public {
         resolver.mint(bytes32(0));
     }
@@ -36,7 +32,7 @@ contract VanityResolverTest is DSTest {
         bytes32 salt = bytes32(uint(10));
 
         address expected = resolver.getExpectedAddress(salt);
-        address actual = resolver.mint(salt);
+        address actual = address(resolver.mint(salt));
 
         assertEq(actual, expected);
     }
@@ -60,14 +56,25 @@ contract VanityResolverTest is DSTest {
         bytes memory data = abi.encodeWithSelector(ExampleContract.testStore.selector, 12002);
         user.call(resolver.idToVanity(0), address(exampleContract), data, 0);
     }
+
+    function testSafeTransferAndCall() public {
+        resolver.mint(bytes32(0));
+
+        resolver.safeTransferFrom(address(this), address(user), 0);
+
+        bytes memory data = abi.encodeWithSelector(ExampleContract.testStore.selector, 12002);
+        user.call(resolver.idToVanity(0), address(exampleContract), data, 0);
+    }
     
-    function testFailTransferAndCallNotOwner() public {
+    function testTransferAndCallNotOwner() public {
         resolver.mint(bytes32(0));
 
         resolver.transferFrom(address(this), address(user), 0);
 
         bytes memory data = abi.encodeWithSelector(ExampleContract.testStore.selector, 12002);
-        resolver.idToVanity(0).call(address(exampleContract), data, 0);
+        bytes memory callData = abi.encode(address(exampleContract), data, 0);
+        (bool success,) = address(resolver.idToVanity(0)).call(callData);
+        assertTrue(!success);
     }
 
     // function testMineVanity() public {
